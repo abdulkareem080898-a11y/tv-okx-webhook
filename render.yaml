@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: tv-okx-webhook
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 30
+    envVars:
+      - key: OKX_API_KEY
+        sync: false
+      - key: OKX_SECRET
+        sync: false
+      - key: OKX_PASSPHRASE
+        sync: false
+      - key: WEBHOOK_SECRET
+        value: my_secret_123
+      - key: INST_ID
+        value: ETH-USDT-SWAP
+      - key: TRADE_SIZE
+        value: "1"
+      - key: LEVERAGE
+        value: "5"
