@@ -1,0 +1,106 @@
+//@version=5
+strategy("Multi-Indicator Strategy", overlay=true, default_qty_type=strategy.percent_of_equity, default_qty_value=100)
+
+// Parameters
+// Moving Averages
+ma_short = input(9, "Short MA")
+ma_long = input(21, "Long MA")
+
+// RSI
+rsi_len = input(14, "RSI Length")
+rsi_lower = input(35, "RSI Lower Bound")
+rsi_upper = input(65, "RSI Upper Bound")
+
+// MACD
+macd_fast = input(12, "MACD Fast")
+macd_slow = input(26, "MACD Slow")
+macd_signal = input(9, "MACD Signal")
+
+// Volume
+use_volume = input(true, "Use Volume Filter")
+volume_ma_len = input(20, "Volume MA Length")
+
+// Indicators
+ma_short_val = ta.sma(close, ma_short)
+ma_long_val = ta.sma(close, ma_long)
+
+rsi_val = ta.rsi(close, rsi_len)
+
+[macd_line, macd_signal_line, macd_hist] = ta.macd(close, macd_fast, macd_slow, macd_signal)
+
+volume_ma = ta.sma(volume, volume_ma_len)
+
+// Plot indicators
+plot(ma_short_val, color=color.blue, linewidth=1, title="Short MA")
+plot(ma_long_val, color=color.red, linewidth=1, title="Long MA")
+
+// Signals - Bullish: price above long MA, short MA above long MA, RSI not overbought, MACD positive
+long_signal = (close > ma_long_val and
+               ma_short_val > ma_long_val and
+               rsi_val < rsi_upper and
+               macd_line > macd_signal_line and
+               (not use_volume or volume > volume_ma * 0.8))
+
+// Signals - Bearish: price below long MA, short MA below long MA, RSI not oversold, MACD negative
+short_signal = (close < ma_long_val and
+                ma_short_val < ma_long_val and
+                rsi_val > rsi_lower and
+                macd_line < macd_signal_line and
+                (not use_volume or volume > volume_ma * 0.8))
+
+// Exit signals
+exit_long = (ma_short_val < ma_long_val or rsi_val > 80)
+exit_short = (ma_short_val > ma_long_val or rsi_val < 20)
+
+// Entry
+if long_signal
+    strategy.entry("Long", strategy.long)
+
+if short_signal
+    strategy.entry("Short", strategy.short)
+
+// Exit
+if exit_long
+    strategy.close("Long")
+
+if exit_short
+    strategy.close("Short")
+
+// Webhook alerts
+if long_signal
+    alert(json.stringify(map.new()
+        .put("signal", "LONG")
+        .put("symbol", syminfo.tickerid)
+        .put("price", str.tostring(close))
+        .put("strategy", "Multi-Indicator")
+        .put("rsi", str.tostring(math.round(rsi_val, 2)))
+        .put("macd_hist", str.tostring(math.round(macd_hist, 4)))
+        ), alert.freq_once_per_bar)
+
+if short_signal
+    alert(json.stringify(map.new()
+        .put("signal", "SHORT")
+        .put("symbol", syminfo.tickerid)
+        .put("price", str.tostring(close))
+        .put("strategy", "Multi-Indicator")
+        .put("rsi", str.tostring(math.round(rsi_val, 2)))
+        .put("macd_hist", str.tostring(math.round(macd_hist, 4)))
+        ), alert.freq_once_per_bar)
+
+if exit_long
+    alert(json.stringify(map.new()
+        .put("signal", "CLOSE")
+        .put("symbol", syminfo.tickerid)
+        .put("price", str.tostring(close))
+        .put("strategy", "Multi-Indicator")
+        .put("reason", "Exit long condition triggered")
+        ), alert.freq_once_per_bar)
+
+if exit_short
+    alert(json.stringify(map.new()
+        .put("signal", "CLOSE")
+        .put("symbol", syminfo.tickerid)
+        .put("price", str.tostring(close))
+        .put("strategy", "Multi-Indicator")
+        .put("reason", "Exit short condition triggered")
+        ), alert.freq_once_per_bar)

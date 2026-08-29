@@ -1,0 +1,145 @@
+{
+  "description": "Example alert payloads that TradingView strategies send to the webhook",
+  "examples": [
+    {
+      "name": "Long Entry Signal",
+      "payload": {
+        "signal": "LONG",
+        "symbol": "BINANCE:ETHUSDT",
+        "price": "2500.50",
+        "strategy": "MA Crossover",
+        "fast_ma": "2495.30",
+        "slow_ma": "2490.15"
+      },
+      "webhook_url": "http://your-server:5000/webhook?secret=your_webhook_secret",
+      "action": "Opens LONG position, closes SHORT if exists"
+    },
+    {
+      "name": "Short Entry Signal",
+      "payload": {
+        "signal": "SHORT",
+        "symbol": "BINANCE:ETHUSDT",
+        "price": "2480.75",
+        "strategy": "RSI Momentum",
+        "rsi": "72.50",
+        "reason": "RSI crossed below overbought level"
+      },
+      "webhook_url": "http://your-server:5000/webhook?secret=your_webhook_secret",
+      "action": "Opens SHORT position, closes LONG if exists"
+    },
+    {
+      "name": "Close All Positions",
+      "payload": {
+        "signal": "CLOSE",
+        "symbol": "BINANCE:ETHUSDT",
+        "price": "2495.00",
+        "strategy": "Breakout",
+        "reason": "Price broke below support level"
+      },
+      "webhook_url": "http://your-server:5000/webhook?secret=your_webhook_secret",
+      "action": "Closes all open positions (LONG and SHORT)"
+    },
+    {
+      "name": "Long Exit (Alternative Format)",
+      "payload": {
+        "signal": "LONG EXIT",
+        "symbol": "BINANCE:ETHUSDT",
+        "price": "2470.00",
+        "strategy": "Multi-Indicator"
+      },
+      "webhook_url": "http://your-server:5000/webhook?secret=your_webhook_secret",
+      "action": "Gets converted to CLOSE - closes all positions"
+    }
+  ],
+  "curl_testing_examples": [
+    {
+      "description": "Test LONG signal",
+      "command": "curl -X POST 'http://localhost:5000/webhook?secret=my_secret_123' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"signal\": \"LONG\", \"symbol\": \"ETH-USDT-SWAP\", \"price\": \"2500\", \"strategy\": \"Test\"}'"
+    },
+    {
+      "description": "Test SHORT signal",
+      "command": "curl -X POST 'http://localhost:5000/webhook?secret=my_secret_123' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"signal\": \"SHORT\", \"symbol\": \"ETH-USDT-SWAP\", \"price\": \"2450\", \"strategy\": \"Test\"}'"
+    },
+    {
+      "description": "Test CLOSE signal",
+      "command": "curl -X POST 'http://localhost:5000/webhook?secret=my_secret_123' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"signal\": \"CLOSE\", \"symbol\": \"ETH-USDT-SWAP\", \"price\": \"2475\", \"strategy\": \"Test\"}'"
+    }
+  ],
+  "expected_webhook_responses": [
+    {
+      "signal": "LONG",
+      "expected_response": {
+        "received": true,
+        "signal": "LONG",
+        "action": "BUY LONG",
+        "okx": {
+          "code": "0",
+          "msg": "",
+          "data": [
+            {
+              "ordId": "123456789",
+              "clOrdId": "",
+              "tag": "",
+              "sCode": "0",
+              "sMsg": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "signal": "SHORT",
+      "expected_response": {
+        "received": true,
+        "signal": "SHORT",
+        "action": "SELL SHORT",
+        "okx": {
+          "code": "0",
+          "msg": "",
+          "data": [
+            {
+              "ordId": "987654321",
+              "clOrdId": "",
+              "tag": "",
+              "sCode": "0",
+              "sMsg": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "signal": "CLOSE",
+      "expected_response": {
+        "received": true,
+        "signal": "CLOSE",
+        "action": "CLOSE ALL",
+        "okx": {
+          "msg": "positions closed"
+        }
+      }
+    },
+    {
+      "signal": "ERROR - Invalid Secret",
+      "expected_response": {
+        "error": "unauthorized",
+        "http_status": 401
+      }
+    },
+    {
+      "signal": "ERROR - Invalid Signal Type",
+      "expected_response": {
+        "error": "unknown signal: INVALID",
+        "http_status": 400
+      }
+    }
+  ],
+  "notes": [
+    "TradingView sends the alert as plain text via POST request",
+    "The json.stringify() in Pine Script converts the map to JSON string",
+    "The webhook parses the JSON and extracts the signal field",
+    "Price field can be 'market' or a specific price",
+    "Symbol field defaults to INST_ID if not provided",
+    "Strategy field is for logging/tracking purposes only"
+  ]
+}
