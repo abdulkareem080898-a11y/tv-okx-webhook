@@ -1,0 +1,60 @@
+//@version=5
+strategy("Breakout Strategy", overlay=true, default_qty_type=strategy.percent_of_equity, default_qty_value=100)
+
+// Parameters
+lookback = input(20, "Lookback Period")
+breakout_threshold = input(0.2, "Breakout Threshold %")
+stop_loss_percent = input(2.0, "Stop Loss %")
+take_profit_percent = input(5.0, "Take Profit %")
+webhook_url = input("", "Webhook URL")
+webhook_secret = input("", "Webhook Secret")
+
+// Calculate resistance and support
+highest_high = ta.highest(high, lookback)
+lowest_low = ta.lowest(low, lookback)
+mid_price = (highest_high + lowest_low) / 2
+
+// Plot levels
+plot(highest_high, color=color.red, linewidth=1, title="Resistance")
+plot(lowest_low, color=color.green, linewidth=1, title="Support")
+plot(mid_price, color=color.gray, linewidth=1, title="Mid")
+
+// Calculate breakout threshold
+resistance_breakout = highest_high * (1 + breakout_threshold / 100)
+support_breakout = lowest_low * (1 - breakout_threshold / 100)
+
+// Signals
+long_signal = close > resistance_breakout and close > highest_high
+short_signal = close < support_breakout and close < lowest_low
+
+// Entry conditions with stop loss and take profit
+if long_signal
+    strategy.entry("Long", strategy.long)
+    strategy.exit("Long Exit", "Long", stop=close * (1 - stop_loss_percent / 100), limit=close * (1 + take_profit_percent / 100))
+
+if short_signal
+    strategy.entry("Short", strategy.short)
+    strategy.exit("Short Exit", "Short", stop=close * (1 + stop_loss_percent / 100), limit=close * (1 - take_profit_percent / 100))
+
+// Webhook alerts
+if long_signal
+    alert(json.stringify(map.new()
+        .put("signal", "LONG")
+        .put("symbol", syminfo.tickerid)
+        .put("price", str.tostring(close))
+        .put("strategy", "Breakout")
+        .put("resistance", str.tostring(highest_high))
+        .put("support", str.tostring(lowest_low))
+        .put("reason", "Price broke above resistance")
+        ), alert.freq_once_per_bar)
+
+if short_signal
+    alert(json.stringify(map.new()
+        .put("signal", "SHORT")
+        .put("symbol", syminfo.tickerid)
+        .put("price", str.tostring(close))
+        .put("strategy", "Breakout")
+        .put("resistance", str.tostring(highest_high))
+        .put("support", str.tostring(lowest_low))
+        .put("reason", "Price broke below support")
+        ), alert.freq_once_per_bar)

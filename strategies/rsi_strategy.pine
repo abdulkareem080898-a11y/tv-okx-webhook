@@ -1,0 +1,78 @@
+//@version=5
+strategy("RSI Momentum Strategy", overlay=true, default_qty_type=strategy.percent_of_equity, default_qty_value=100)
+
+// Parameters
+rsi_length = input(14, "RSI Length")
+overbought = input(70, "Overbought Level")
+oversold = input(30, "Oversold Level")
+webhook_url = input("", "Webhook URL")
+webhook_secret = input("", "Webhook Secret")
+
+// Calculate RSI
+rsi = ta.rsi(close, rsi_length)
+
+// Plot RSI
+hline(50, "Midline", color=color.gray)
+hline(overbought, "Overbought", color=color.red)
+hline(oversold, "Oversold", color=color.green)
+plot(rsi, color=color.blue, linewidth=2, title="RSI")
+
+// Signals - RSI crosses oversold (bullish)
+long_signal = ta.crossover(rsi, oversold)
+
+// Signals - RSI crosses overbought (bearish)
+short_signal = ta.crossunder(rsi, overbought)
+
+// Entry conditions
+if long_signal
+    strategy.entry("Long", strategy.long)
+
+if short_signal
+    strategy.entry("Short", strategy.short)
+
+// Close conditions
+if rsi > 80
+    strategy.close("Long")
+if rsi < 20
+    strategy.close("Short")
+
+// Webhook alerts
+if long_signal
+    alert(json.stringify(map.new()
+        .put("signal", "LONG")
+        .put("symbol", syminfo.tickerid)
+        .put("price", str.tostring(close))
+        .put("strategy", "RSI Momentum")
+        .put("rsi", str.tostring(rsi))
+        .put("reason", "RSI crossed above oversold level")
+        ), alert.freq_once_per_bar)
+
+if short_signal
+    alert(json.stringify(map.new()
+        .put("signal", "SHORT")
+        .put("symbol", syminfo.tickerid)
+        .put("price", str.tostring(close))
+        .put("strategy", "RSI Momentum")
+        .put("rsi", str.tostring(rsi))
+        .put("reason", "RSI crossed below overbought level")
+        ), alert.freq_once_per_bar)
+
+if rsi > 80
+    alert(json.stringify(map.new()
+        .put("signal", "CLOSE")
+        .put("symbol", syminfo.tickerid)
+        .put("price", str.tostring(close))
+        .put("strategy", "RSI Momentum")
+        .put("rsi", str.tostring(rsi))
+        .put("reason", "RSI extreme overbought - close longs")
+        ), alert.freq_once_per_bar)
+
+if rsi < 20
+    alert(json.stringify(map.new()
+        .put("signal", "CLOSE")
+        .put("symbol", syminfo.tickerid)
+        .put("price", str.tostring(close))
+        .put("strategy", "RSI Momentum")
+        .put("rsi", str.tostring(rsi))
+        .put("reason", "RSI extreme oversold - close shorts")
+        ), alert.freq_once_per_bar)
